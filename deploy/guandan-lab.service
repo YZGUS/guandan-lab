@@ -5,17 +5,22 @@ After=network.target
 [Service]
 Type=simple
 User=guandan
+Group=guandan
 WorkingDirectory=/opt/guandan-lab
 Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=GUANDAN_DEPLOYMENT_MODE=cloud
 Environment=HOST=127.0.0.1
 Environment=PORT=8788
-EnvironmentFile=/etc/guandan-lab.env
-ExecStart=/usr/bin/npm start
+EnvironmentFile=/etc/guandan/guandan.env
+ExecStart=/usr/bin/env npm start
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/guandan
 
 [Install]
 WantedBy=multi-user.target

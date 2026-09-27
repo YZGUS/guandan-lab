@@ -42,6 +42,8 @@ http://<开桌设备的局域网 IP>:8788/
 公网部署必须使用 HTTPS，并配置真实网页来源：
 
 ```bash
+VITE_BASE_PATH=/guandan/ npm run build
+
 GUANDAN_DEPLOYMENT_MODE=cloud \
 GUANDAN_INVITE_CODES='Alice:请替换为高强度邀请码,Bob:请替换为另一个邀请码' \
 GUANDAN_ALLOWED_ORIGINS='https://cards.example.com' \
@@ -51,6 +53,8 @@ GUANDAN_TRUSTED_PROXIES='127.0.0.1' \
 PORT=8788 \
 npm start
 ```
+
+与其他应用共用域名时，外部页面使用 `/guandan/`，WebSocket 使用 `/guandan/ws`；Nginx 去掉前缀后分别转发到服务内部的 `/` 与 `/ws`。不同应用可以在各自端口继续使用内部 `/ws`，只要外部 location 不相同。
 
 服务端通过 HttpOnly Cookie 保存登录，不向 Web 客户端暴露云端会话令牌。Nginx 与 systemd 示例位于 [`deploy/`](./deploy)。
 
