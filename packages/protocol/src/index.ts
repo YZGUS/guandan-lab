@@ -29,6 +29,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('DISBAND_ROOM') }),
   z.object({ type: z.literal('START_GAME') }),
   z.object({ type: z.literal('NEXT_DEAL') }),
+  z.object({ type: z.literal('RESTART_MATCH') }),
   z.object({
     type: z.literal('ACTION'),
     actionId: z.string().min(1).max(100),

@@ -90,14 +90,22 @@ export class RoomService {
 
   leaveRoom(principal: Principal) {
     const room = this.requireMembership(principal.userId);
-    if (room.status !== 'WAITING') throw new Error('牌局开始后请保留座位，以便断线恢复');
-    room.players = room.players.filter((player) => player.id !== principal.userId);
-    if (!room.players.some((player) => player.kind === 'HUMAN')) {
+    const remainingHumans = room.players.filter((player) => player.kind === 'HUMAN' && player.id !== principal.userId);
+    if (!remainingHumans.length) {
       this.rooms.delete(room.id);
       this.repository.delete(room.id);
       return { roomId: room.id, room: null };
     }
-    if (room.hostPlayerId === principal.userId) room.hostPlayerId = room.players.find((player) => player.kind === 'HUMAN')!.id;
+    if (room.status === 'PLAYING' && room.game) {
+      const player = room.players.find((item) => item.id === principal.userId)!;
+      const replacement = { id: `${room.id}-auto-${player.seat}`, name: `托管 Bot ${player.seat + 1}`, kind: 'BOT' as const };
+      Object.assign(player, replacement, { connected: true });
+      Object.assign(room.game.players[player.seat], replacement);
+      room.game.version += 1;
+    } else {
+      room.players = room.players.filter((player) => player.id !== principal.userId);
+    }
+    if (room.hostPlayerId === principal.userId) room.hostPlayerId = remainingHumans[0].id;
     this.save(room);
     return { roomId: room.id, room };
   }
@@ -166,6 +174,18 @@ export class RoomService {
     const room = this.requireMembership(principal.userId);
     if (room.hostPlayerId !== principal.userId) throw new Error('只有房主可以开始下一副');
     return this.nextDeal(room.id);
+  }
+
+  restartMatch(principal: Principal) {
+    const room = this.requireMembership(principal.userId);
+    if (room.hostPlayerId !== principal.userId) throw new Error('只有房主可以再来一局');
+    if (room.status !== 'FINISHED' || room.game?.phase !== 'MATCH_FINISHED') throw new Error('整场结束后才能再来一局');
+    room.status = 'WAITING';
+    room.game = undefined;
+    room.turnDeadline = null;
+    room.handledActionIds = [];
+    this.save(room);
+    return room;
   }
 
   setConnected(userId: string, connected: boolean) {

@@ -98,7 +98,7 @@ function finishDeal(state: GameState) {
   const winnerTeam = teamOf(order[0]);
   const gain = levelGain(order);
   const currentLevel = state.teams[winnerTeam].level;
-  const passedAce = currentLevel === 'A' && gain >= 2;
+  const passedAce = currentLevel === 'A' && state.levelRank === 'A' && gain >= 2;
   state.finishOrder = order;
   state.dealWinnerTeam = winnerTeam;
   state.currentPlayer = null;
@@ -215,7 +215,10 @@ function applyTribute(state: GameState, previousOrder: readonly Seat[]) {
     return first;
   }
   const offers = payers.map((payer) => ({ payer, card: tributeCard(state.players[payer], state.levelRank) })).filter((item): item is { payer: Seat; card: Card } => Boolean(item.card));
-  offers.sort((left, right) => compareTributeCards(left.card, right.card, state.levelRank));
+  offers.sort((left, right) =>
+    rankStrength(right.card.rank, state.levelRank) - rankStrength(left.card.rank, state.levelRank)
+    || (left.payer - first + 4) % 4 - (right.payer - first + 4) % 4,
+  );
   const receivers = doubleDown ? [first, second] : [first];
   offers.forEach((offer, index) => {
     const receiver = receivers[index];

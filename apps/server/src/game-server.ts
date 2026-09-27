@@ -126,7 +126,10 @@ export class GameServer {
       this.broadcastLobby();
     } else if (message.type === 'LEAVE_ROOM') {
       const result = this.service.leaveRoom(principal);
-      if (result.room) this.broadcastRoom(result.roomId); else this.clearRoomTimer(result.roomId);
+      if (result.room) {
+        this.broadcastRoom(result.roomId);
+        this.schedule(result.roomId);
+      } else this.clearRoomTimer(result.roomId);
       this.sendLobby(client, context);
       this.broadcastLobby();
     } else if (message.type === 'DISBAND_ROOM') {
@@ -143,6 +146,11 @@ export class GameServer {
       const room = this.service.nextDealByHost(principal);
       this.broadcastRoom(room.id);
       this.schedule(room.id);
+    } else if (message.type === 'RESTART_MATCH') {
+      const room = this.service.restartMatch(principal);
+      this.clearRoomTimer(room.id);
+      this.broadcastRoom(room.id);
+      this.broadcastLobby();
     } else if (message.type === 'ACTION') {
       const room = this.service.act(principal, message);
       this.broadcastRoom(room.id);
@@ -179,7 +187,15 @@ export class GameServer {
         this.service.applyForPlayer(roomId, current.id, action);
         this.broadcastRoom(roomId);
         this.schedule(roomId);
-      } catch { this.clearRoomTimer(roomId); }
+      } catch (error) {
+        this.clearRoomTimer(roomId);
+        console.error(`Automatic action failed in room ${roomId}`, error);
+        for (const [client, context] of this.connections) {
+          if (this.service.roomForUser(context.principal.userId)?.id === roomId) {
+            this.send(client, { type: 'ERROR', message: '自动出牌失败，请手动行动或重新进入牌桌' });
+          }
+        }
+      }
     }, delay);
     timer.unref();
     this.roomTimers.set(roomId, timer);

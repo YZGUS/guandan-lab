@@ -2,9 +2,10 @@ import { cardText, isWild, naturalRankStrength, NORMAL_RANKS, rankStrength, STAN
 import type { Card, Combo, ComboDeclaration, ComboType, NormalRank, Rank, Suit } from './types.js';
 
 const sequenceRanks: readonly NormalRank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-const sequenceWindows = Array.from({ length: 10 }, (_, index) => sequenceRanks.slice(index, index + 5));
-const pairWindows = Array.from({ length: 11 }, (_, index) => sequenceRanks.slice(index, index + 3));
-const tripleWindows = Array.from({ length: 12 }, (_, index) => sequenceRanks.slice(index, index + 2));
+const windows = (length: number) => Array.from({ length: sequenceRanks.length - length + 1 }, (_, index) => sequenceRanks.slice(index, index + length));
+const sequenceWindows = windows(5);
+const pairWindows = windows(3);
+const tripleWindows = windows(2);
 
 const typeLabel: Record<ComboType, string> = {
   SINGLE: '单张', PAIR: '对子', TRIPLE: '三张', FULL_HOUSE: '三带二', STRAIGHT: '顺子',
@@ -68,7 +69,7 @@ function matchesRequirements(cards: readonly Card[], level: NormalRank, requirem
   return missing === wilds.length;
 }
 
-function sequenceCandidate(
+function sequenceCandidates(
   cards: readonly Card[],
   level: NormalRank,
   windows: readonly (readonly NormalRank[])[],
@@ -76,15 +77,16 @@ function sequenceCandidate(
   type: 'STRAIGHT' | 'PAIR_RUN' | 'TRIPLE_RUN' | 'STRAIGHT_FLUSH',
   suit?: Exclude<Suit, 'joker'>,
 ) {
+  const candidates: Combo[] = [];
   for (let index = 0; index < windows.length; index += 1) {
     const window = windows[index];
     if (suit && cards.some((card) => !isWild(card, level) && card.suit !== suit)) continue;
     const requirements = new Map<Rank, number>(window.map((rank) => [rank, multiplicity]));
     if (!matchesRequirements(cards, level, requirements)) continue;
     const primaryRank = window[window.length - 1];
-    return combo(type, cards, primaryRank, (multiplicity === 1 ? 5 : 2 + multiplicity) + index, level);
+    candidates.push(combo(type, cards, primaryRank, naturalRankStrength(primaryRank), level));
   }
-  return null;
+  return candidates;
 }
 
 export function classifyPlays(cards: readonly Card[], level: NormalRank): Combo[] {
@@ -100,8 +102,7 @@ export function classifyPlays(cards: readonly Card[], level: NormalRank): Combo[
   }
   if (cards.length === 5) {
     for (const suit of STANDARD_SUITS) {
-      const straightFlush = sequenceCandidate(cards, level, sequenceWindows, 1, 'STRAIGHT_FLUSH', suit);
-      if (straightFlush) { candidates.push(straightFlush); break; }
+      candidates.push(...sequenceCandidates(cards, level, sequenceWindows, 1, 'STRAIGHT_FLUSH', suit));
     }
     for (const tripleRank of NORMAL_RANKS) {
       for (const pairRank of [...NORMAL_RANKS, 'SJ', 'BJ'] as Rank[]) {
@@ -112,14 +113,11 @@ export function classifyPlays(cards: readonly Card[], level: NormalRank): Combo[
         }
       }
     }
-    const straight = sequenceCandidate(cards, level, sequenceWindows, 1, 'STRAIGHT');
-    if (straight) candidates.push(straight);
+    candidates.push(...sequenceCandidates(cards, level, sequenceWindows, 1, 'STRAIGHT'));
   }
   if (cards.length === 6) {
-    const pairRun = sequenceCandidate(cards, level, pairWindows, 2, 'PAIR_RUN');
-    if (pairRun) candidates.push(pairRun);
-    const tripleRun = sequenceCandidate(cards, level, tripleWindows, 3, 'TRIPLE_RUN');
-    if (tripleRun) candidates.push(tripleRun);
+    candidates.push(...sequenceCandidates(cards, level, pairWindows, 2, 'PAIR_RUN'));
+    candidates.push(...sequenceCandidates(cards, level, tripleWindows, 3, 'TRIPLE_RUN'));
   }
   if (cards.length === 3) {
     const triple = sameRankCandidate(cards, level, 'TRIPLE');
@@ -219,15 +217,15 @@ export function enumeratePlays(hand: readonly Card[], level: NormalRank, target:
     [tripleWindows, 3, 'TRIPLE_RUN'],
   ] as const;
   for (const [windows, multiplicity, type] of sequenceSpecs) {
-    windows.forEach((window, index) => {
+    windows.forEach((window) => {
       const cards = pickRequirements(hand, level, new Map<Rank, number>(window.map((rank) => [rank, multiplicity])));
-      if (cards) plays.push(combo(type, cards, window[window.length - 1], (multiplicity === 1 ? 5 : 2 + multiplicity) + index, level));
+      if (cards) plays.push(combo(type, cards, window[window.length - 1], naturalRankStrength(window[window.length - 1]), level));
     });
   }
   for (const suit of STANDARD_SUITS) {
-    sequenceWindows.forEach((window, index) => {
+    sequenceWindows.forEach((window) => {
       const cards = pickRequirements(hand, level, new Map<Rank, number>(window.map((rank) => [rank, 1])), suit);
-      if (cards) plays.push(combo('STRAIGHT_FLUSH', cards, window[window.length - 1], 5 + index, level));
+      if (cards) plays.push(combo('STRAIGHT_FLUSH', cards, window[window.length - 1], naturalRankStrength(window[window.length - 1]), level));
     });
   }
   const jokers = hand.filter((card) => card.rank === 'BJ' || card.rank === 'SJ');
