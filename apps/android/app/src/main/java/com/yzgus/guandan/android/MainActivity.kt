@@ -2,6 +2,7 @@ package com.yzgus.guandan.android
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -9,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -21,6 +23,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.view.inputmethod.InputMethodManager
 import com.yzgus.guandan.android.discovery.Endpoint
 import com.yzgus.guandan.android.discovery.EndpointMerger
 import com.yzgus.guandan.android.discovery.EndpointScanReport
@@ -60,6 +63,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WebView.setWebContentsDebuggingEnabled(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
         window.statusBarColor = ink
         window.navigationBarColor = ink
         root = FrameLayout(this).apply { setBackgroundColor(ink) }
@@ -219,6 +223,28 @@ class MainActivity : Activity() {
         webView = browser
         root.removeAllViews()
         root.addView(browser, FrameLayout.LayoutParams(-1, -1))
+        browser.setOnApplyWindowInsetsListener { view, insets ->
+            val top: Int
+            val bottom: Int
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                top = bars.top
+                bottom = bars.bottom
+            } else {
+                @Suppress("DEPRECATION")
+                top = insets.systemWindowInsetTop
+                @Suppress("DEPRECATION")
+                bottom = insets.systemWindowInsetBottom
+            }
+            val params = view.layoutParams as FrameLayout.LayoutParams
+            if (params.topMargin != top || params.bottomMargin != bottom) {
+                params.topMargin = top
+                params.bottomMargin = bottom
+                view.layoutParams = params
+            }
+            insets
+        }
+        browser.requestApplyInsets()
     }
 
     @Deprecated("Deprecated in Java")
@@ -228,6 +254,12 @@ class MainActivity : Activity() {
     }
 
     private fun handleBack() {
+        val focused = currentFocus
+        if (focused is EditText) {
+            (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(focused.windowToken, 0)
+            focused.clearFocus()
+            return
+        }
         val browser = webView
         when {
             browser == null -> finish()
