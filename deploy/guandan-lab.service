@@ -1,0 +1,21 @@
+[Unit]
+Description=Guandan Lab
+After=network.target
+
+[Service]
+Type=simple
+User=guandan
+WorkingDirectory=/opt/guandan-lab
+Environment=NODE_ENV=production
+Environment=GUANDAN_DEPLOYMENT_MODE=cloud
+Environment=HOST=127.0.0.1
+Environment=PORT=8788
+EnvironmentFile=/etc/guandan-lab.env
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

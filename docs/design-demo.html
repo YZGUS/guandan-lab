@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23e6c36d'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' font-family='serif' font-weight='700' fill='%2317150f'%3E掼%3C/text%3E%3C/svg%3E" />
+  <title>掼蛋牌桌 · 响应式设计 Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #f5f1e8;
+      background: #07100d;
+      --gold: #e6c36d;
+      --gold-soft: #f2dda6;
+      --green: #71d7aa;
+      --felt: #155f48;
+      --panel: #071511;
+      --panel-soft: #0a1b16;
+      --line: #ffffff17;
+      --muted: #8da198;
+      --danger: #e58a7e;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: #07100d; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at 70% -10%, #1c4937 0, transparent 34rem),
+        linear-gradient(135deg, #07100d, #0a1511 58%, #07100d);
+    }
+    button { color: inherit; font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    button:disabled { cursor: default; opacity: .4; }
+
+    .demo-shell { width: min(1480px, 100%); margin: auto; padding: 24px; }
+    .demo-header { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .eyebrow { margin: 0 0 8px; color: #cdb36f; font: 760 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .16em; }
+    .demo-header h1 { margin: 0; font-size: clamp(26px, 3vw, 42px); letter-spacing: -.05em; }
+    .demo-badge { padding: 8px 12px; color: #dac792; border: 1px solid #d2b96840; border-radius: 999px; background: #d2b9680c; font-size: 12px; white-space: nowrap; }
+
+    .workspace { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; }
+    .control-panel, .preview-card, .design-note { border: 1px solid var(--line); border-radius: 18px; background: #06120ff2; box-shadow: 0 24px 70px #0005; }
+    .control-panel { align-self: start; display: grid; gap: 18px; padding: 18px; position: sticky; top: 16px; }
+    .control-panel section { display: grid; gap: 9px; }
+    .control-panel h2 { margin: 0; color: #d7dfda; font-size: 12px; }
+    .control-panel small { color: #71857b; font-size: 11px; line-height: 1.55; }
+    .option-grid { display: grid; gap: 7px; }
+    .option-grid.devices { grid-template-columns: 1fr; }
+    .option-grid.states { grid-template-columns: repeat(3, 1fr); }
+    .option-grid button { min-height: 40px; padding: 7px 10px; color: #adbbb4; border: 1px solid #ffffff12; border-radius: 10px; background: #ffffff05; font-size: 12px; text-align: left; transition: color .16s ease, border-color .16s ease, background .16s ease, transform .16s ease; }
+    .option-grid.states button { padding-inline: 5px; text-align: center; }
+    .option-grid button:hover { color: #f0e5ca; border-color: #cdb36f3b; transform: translateY(-1px); }
+    .option-grid button.active { color: #17150f; border-color: var(--gold); background: var(--gold); font-weight: 850; }
+    .device-option { display: flex; align-items: center; justify-content: space-between; }
+    .device-option i { color: #73877d; font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; font-style: normal; }
+    .device-option.active i { color: #5f531f; }
+    .rule-box { padding: 12px; border: 1px solid #67d5a02b; border-radius: 11px; background: #12312678; }
+    .rule-box strong { display: block; color: #d2f2e2; font-size: 12px; }
+    .rule-box span { display: block; margin-top: 5px; color: #91a69c; font-size: 11px; line-height: 1.5; }
+
+    .main-column { min-width: 0; display: grid; gap: 14px; }
+    .preview-card { min-width: 0; padding: 14px; }
+    .preview-heading { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 3px 10px; }
+    .preview-heading strong { font-size: 14px; }
+    .preview-heading span { color: #8da097; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: right; }
+    .preview-stage { position: relative; width: 100%; height: min(72vh, 780px); min-height: 540px; overflow: hidden; border: 1px solid #ffffff12; border-radius: 14px; background: linear-gradient(145deg, #111a16, #050a08); }
+    .preview-stage::before { content: "GUANDAN LAB"; position: absolute; right: 18px; bottom: 14px; color: #ffffff08; font: 850 34px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+
+    .device-canvas {
+      --preview-scale: 1;
+      --device-width: 1280px;
+      --device-height: 720px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: var(--device-width);
+      height: var(--device-height);
+      overflow: hidden;
+      border: 1px solid #ffffff24;
+      border-radius: 18px;
+      background: #020c09;
+      box-shadow: 0 30px 90px #000b, inset 0 1px #ffffff0a;
+      transform: translate(-50%, -50%) scale(var(--preview-scale));
+      transform-origin: center;
+    }
+
+    .game-shell { height: 100%; display: grid; grid-template-rows: 62px minmax(0, 1fr); background: radial-gradient(circle at 50% 10%, #15392c, #03100c 49%); }
+    .game-topbar { position: relative; z-index: 30; display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr); align-items: center; gap: 14px; padding: 8px 16px; border-bottom: 1px solid #ffffff14; background: #03100ded; backdrop-filter: blur(16px); }
+    .brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; color: #1a170d; border-radius: 10px; background: var(--gold); font: 900 14px/1 Georgia, serif; box-shadow: inset 0 1px #fff7c680; }
+    .brand-copy { min-width: 0; }
+    .brand-copy strong { display: block; overflow: hidden; color: #e2c778; font: 760 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-overflow: ellipsis; white-space: nowrap; }
+    .brand-copy span { display: block; margin-top: 4px; color: #72877d; font-size: 9px; }
+    .match-status { display: flex; align-items: center; gap: 10px; padding: 7px 11px; border: 1px solid #cfb6673d; border-radius: 999px; background: #ffffff05; }
+    .level-badge { display: flex; align-items: center; gap: 5px; color: #f0d88f; font-size: 11px; font-weight: 800; }
+    .level-badge i { width: 19px; height: 19px; display: grid; place-items: center; color: white; border-radius: 6px; background: #ad3732; font: 900 10px/1 Georgia, serif; font-style: normal; }
+    .round-copy { padding-left: 10px; color: #acbbb3; border-left: 1px solid #ffffff1c; font-size: 10px; }
+    .top-actions { justify-self: end; display: flex; gap: 6px; }
+    .top-actions button { min-height: 34px; padding: 0 12px; color: #c2cec8; border: 1px solid #ffffff16; border-radius: 10px; background: #ffffff05; font-size: 10px; transition: background .15s ease, border-color .15s ease; }
+    .top-actions button:hover { border-color: #cdb36f3b; background: #ffffff09; }
+    .connection-dot { width: 34px; padding: 0 !important; font-size: 0 !important; }
+    .connection-dot::after { content: ""; width: 8px; height: 8px; display: block; margin: auto; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 5px #71d7aa12; }
+
+    .game-body { position: relative; min-height: 0; display: grid; }
+    .device-canvas.is-landscape:not(.is-wide-desktop) .game-body { grid-template-columns: 118px minmax(0, 1fr); }
+    .device-canvas.is-wide-desktop .game-body { grid-template-columns: minmax(0, 1fr); }
+    .device-canvas.is-portrait .game-body { grid-template-rows: minmax(0, 1fr) 76px; }
+
+    .control-rail { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; margin: 8px 5px 8px 8px; padding: 8px; border: 1px solid #ffffff17; border-radius: 13px; background: #061611e8; box-shadow: inset 0 1px #ffffff08; }
+    .is-wide-desktop .control-rail { position: absolute; top: 50%; left: 16px; z-index: 18; width: 122px; min-height: auto; margin: 0; transform: translateY(-50%); box-shadow: 0 18px 42px #0007, inset 0 1px #ffffff08; }
+    .rail-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .rail-tools button { min-height: 34px; padding: 0 5px; color: #b7c5be; border: 1px solid #ffffff14; border-radius: 8px; background: #ffffff05; font-size: 10px; font-weight: 750; }
+    .rail-tools button.active { color: #f2dda8; border-color: #c7a55b66; background: #183328; }
+    .turn-card { align-self: center; display: grid; gap: 4px; padding: 11px 8px; border: 1px solid #ffffff13; border-radius: 10px; background: #ffffff04; text-align: center; }
+    .turn-card i { width: 8px; height: 8px; margin: 0 auto 3px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 5px #e6c36d14; }
+    .turn-card strong { font-size: 11px; }
+    .turn-card small { color: #80948a; font-size: 9px; line-height: 1.35; }
+    .rail-actions { display: grid; gap: 6px; }
+    .rail-actions button { min-height: 36px; padding: 0 8px; color: #e4eae6; border: 1px solid #ffffff16; border-radius: 8px; background: #ffffff05; font-size: 10px; font-weight: 800; }
+    .rail-actions .primary { color: #18160e; border-color: var(--gold); background: var(--gold); }
+    .rail-actions .quiet { color: #9bada4; }
+
+    .table-zone { position: relative; min-width: 0; min-height: 0; overflow: hidden; container-type: size; }
+    .table-zone::before { content: ""; position: absolute; inset: 8% 11%; border-radius: 50%; background: radial-gradient(ellipse, #226e5680, transparent 70%); filter: blur(30px); }
+    .match-score { position: absolute; top: 10px; left: 50%; z-index: 8; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #ffffff16; border-radius: 999px; background: #04120edb; box-shadow: 0 7px 24px #0005; transform: translateX(-50%); }
+    .match-score span { min-width: 66px; color: #b7c5be; font-size: 9px; text-align: center; }
+    .match-score span:first-child { color: #b7e9d3; }
+    .match-score b { color: #d8c389; font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .guandan-table { position: absolute; top: 49%; left: 50%; width: min(85cqw, 148cqh); aspect-ratio: 1.72 / 1; border: clamp(8px, .9cqw, 13px) solid #59391f; border-radius: 50%; background: radial-gradient(ellipse, #1b7358 0, #10523f 58%, #08392d 100%); box-shadow: inset 0 0 0 2px #bd914f, inset 0 0 84px #001a13bd, 0 28px 78px #0009; transform: translate(-50%, -50%); }
+    .guandan-table::before { content: ""; position: absolute; inset: 8%; border: 1px dashed #e8d59b17; border-radius: 50%; }
+    .guandan-table::after { content: "掼"; position: absolute; inset: 0; display: grid; place-items: center; color: #ffffff07; font: 900 min(15cqh, 9cqw)/1 Georgia, serif; }
+    .is-portrait .guandan-table { top: 44%; width: min(88cqw, 72cqh); aspect-ratio: .82 / 1; }
+    .is-phone.is-landscape .guandan-table { top: 46%; width: min(86cqw, 142cqh); }
+
+    .center-play { position: absolute; top: 49%; left: 50%; z-index: 4; width: min(310px, 46%); display: grid; justify-items: center; transform: translate(-50%, -50%); }
+    .play-label { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; padding: 4px 8px; color: #bdd0c7; border: 1px solid #ffffff14; border-radius: 999px; background: #04140fbf; font-size: 9px; }
+    .play-label b { color: #f0d68d; }
+    .trick-cards { height: 58px; display: flex; justify-content: center; padding-left: 13px; }
+    .trick-card { width: 42px; height: 58px; display: grid; grid-template-rows: auto 1fr auto; margin-left: -13px; padding: 4px 5px; color: #172019; border: 1px solid #e7e1d5; border-radius: 6px; background: linear-gradient(150deg, #fffdf7, #e7e2d6); box-shadow: 0 6px 16px #0007; font-style: normal; font-weight: 900; line-height: 1; animation: card-arrive .22s ease-out both; }
+    .trick-card.red { color: #b73d35; }
+    .trick-card b { font-size: 13px; }
+    .trick-card span { align-self: end; font-size: 13px; }
+    .trick-card:nth-child(2) { transform: translateY(-3px) rotate(-1deg); }
+    .trick-card:nth-child(3) { transform: translateY(1px) rotate(2deg); }
+    .trick-card:nth-child(4) { transform: translateY(-2px) rotate(-2deg); }
+    .trick-card:nth-child(5) { transform: translateY(2px) rotate(2deg); }
+    .next-copy { margin-top: 8px; color: #91a69c; font-size: 9px; }
+
+    .seat { position: absolute; z-index: 6; width: 124px; display: grid; justify-items: center; transform: translate(-50%, -50%); }
+    .seat.partner { top: 4%; left: 50%; }
+    .seat.left { top: 50%; left: 2%; }
+    .seat.right { top: 50%; left: 98%; }
+    .seat.hero { top: 96%; left: 50%; }
+    .seat-card { width: 100%; min-height: 43px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; align-items: center; padding: 6px 8px; border: 1px solid #ffffff24; border-radius: 11px; background: #07130ff2; box-shadow: 0 9px 22px #0007; }
+    .partner .seat-card, .hero .seat-card { border-color: #66d6a060; }
+    .seat.is-current .seat-card { border-color: #e6c36d9c; box-shadow: 0 0 0 3px #e6c36d14, 0 9px 22px #0007; }
+    .avatar { width: 28px; height: 28px; display: grid; place-items: center; color: #17150e; border-radius: 50%; background: var(--gold); font-size: 9px; font-weight: 900; }
+    .partner .avatar, .hero .avatar { background: var(--green); }
+    .player-copy { min-width: 0; }
+    .player-name { display: block; overflow: hidden; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .team-name { display: block; margin-top: 2px; color: #71867c; font-size: 8px; white-space: nowrap; }
+    .card-count { min-width: 27px; height: 28px; display: grid; place-items: center; color: #f0d99a; border: 1px solid #cdb56b3e; border-radius: 8px; background: #ffffff06; font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .seat-state { margin-top: 4px; padding: 3px 7px; color: #cab97f; border: 1px solid #cdb56b3a; border-radius: 999px; background: #10251d; font: 700 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .partner .seat-state, .hero .seat-state { color: #a4d9c1; border-color: #66d6a03b; }
+
+    .hand-rack { position: absolute; left: 50%; bottom: 6px; z-index: 12; width: min(1140px, 92%); display: grid; justify-items: center; transform: translateX(-50%); }
+    .hand-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; padding: 4px 8px; color: #91a49b; border: 1px solid #ffffff13; border-radius: 999px; background: #04120ed6; font-size: 8px; }
+    .hand-meta b { color: #d9c17f; }
+    .hand-cards { width: 100%; display: grid; justify-items: center; gap: 2px; padding: 7px 10px 5px; border: 1px solid #ffffff11; border-radius: 14px; background: #02100cb8; box-shadow: 0 12px 32px #0006, inset 0 1px #ffffff07; backdrop-filter: blur(10px); }
+    .hand-row { display: flex; justify-content: center; padding-left: 0; }
+    .playing-card { position: relative; width: 48px; height: 70px; display: grid; grid-template-rows: auto auto 1fr; margin-left: -7px; padding: 5px 6px; color: #172019; border: 1px solid #e6e0d4; border-radius: 6px; background: linear-gradient(150deg, #fffef9, #e7e2d6); box-shadow: 0 5px 14px #0007; font-style: normal; font-weight: 900; line-height: 1; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; animation: deal-in .24s ease-out both; }
+    .playing-card:first-child { margin-left: 0; }
+    .playing-card:hover { z-index: 40 !important; transform: translateY(-8px); }
+    .playing-card.selected { z-index: 38 !important; border-color: #f3d776; box-shadow: 0 0 0 3px #f3d77628, 0 10px 22px #0009; transform: translateY(-15px); }
+    .playing-card.red { color: #b63b33; }
+    .playing-card b { font-size: 14px; }
+    .playing-card span { align-self: start; margin-top: 2px; font-size: 13px; }
+    .playing-card small { position: absolute; right: 3px; bottom: 3px; padding: 2px 3px; color: #fff8e3; border-radius: 3px; background: #b73d35; font-size: 6px; }
+    .playing-card.joker { color: #1d2722; background: linear-gradient(150deg, #fffdf7, #ded8c9); }
+    .playing-card.joker b { font-size: 10px; letter-spacing: -.08em; }
+    .playing-card.joker.red { color: #ae3732; }
+    .is-ultrawide .hand-rack { width: min(1540px, 94%); }
+    .is-ultrawide .playing-card { width: 62px; height: 88px; margin-left: -8px; padding: 7px 8px; border-radius: 8px; }
+    .is-ultrawide .playing-card b { font-size: 18px; }
+    .is-ultrawide .playing-card span { font-size: 16px; }
+    .is-ultrawide .playing-card.joker b { font-size: 12px; }
+
+    .floating-tools { position: absolute; top: 12px; right: 10px; z-index: 18; display: none; gap: 6px; }
+    .floating-tools button { min-height: 34px; padding: 0 11px; color: #bdc9c2; border: 1px solid #ffffff16; border-radius: 9px; background: #061611ee; font-size: 10px; }
+    .bottom-dock { z-index: 24; display: none; align-items: center; gap: 8px; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid #ffffff14; background: #04110ef2; }
+    .bottom-dock button { flex: 1; min-height: 50px; color: #edf1ee; border: 1px solid #ffffff18; border-radius: 12px; background: #ffffff05; font-size: 13px; font-weight: 850; }
+    .bottom-dock .primary { color: #17150f; border-color: var(--gold); background: var(--gold); }
+    .bottom-waiting { width: min(520px, 100%); min-height: 48px; display: grid; place-items: center; margin: auto; color: #cbd7d0; border: 1px solid #ffffff18; border-radius: 999px; background: #ffffff04; font-size: 12px; font-weight: 750; }
+
+    .info-drawer { position: absolute; top: 8px; right: 8px; bottom: 8px; z-index: 40; width: min(298px, 42%); display: none; padding: 14px; border: 1px solid #ffffff20; border-radius: 13px; background: #06120ff5; box-shadow: 0 20px 55px #000c; backdrop-filter: blur(18px); animation: drawer-in .18s ease-out both; }
+    .info-drawer.open { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+    .info-drawer header { display: flex; justify-content: space-between; align-items: center; }
+    .info-drawer h3 { margin: 0; font-size: 13px; }
+    .info-drawer header button { width: 29px; height: 29px; padding: 0; color: #b7c4bd; border: 1px solid #ffffff14; border-radius: 8px; background: #ffffff07; }
+    .drawer-content { min-height: 0; margin-top: 12px; overflow-y: auto; }
+    .drawer-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .drawer-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; padding: 8px; border: 1px solid #ffffff0f; border-radius: 9px; background: #ffffff03; }
+    .drawer-list li > b { width: 22px; height: 22px; display: grid; place-items: center; color: #dcc57f; border-radius: 7px; background: #cdb56b13; font: 800 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .drawer-list strong { display: block; font-size: 10px; }
+    .drawer-list span { display: block; margin-top: 3px; color: #85988f; font-size: 9px; line-height: 1.45; }
+
+    .settlement { position: absolute; inset: 0; z-index: 35; display: none; place-items: center; padding: 18px; background: #010705ba; backdrop-filter: blur(8px); }
+    .settlement.open { display: grid; animation: fade-in .18s ease-out both; }
+    .settlement-card { width: min(410px, 92%); padding: 24px; border: 1px solid #d8bd6648; border-radius: 18px; background: linear-gradient(145deg, #0c251c, #06130f); box-shadow: 0 30px 80px #000c; text-align: center; }
+    .settlement-mark { width: 54px; height: 54px; display: grid; place-items: center; margin: 0 auto 14px; color: #1b170d; border-radius: 17px; background: var(--gold); font: 900 24px/1 Georgia, serif; }
+    .settlement-card p { margin: 0; color: #cbb36d; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+    .settlement-card h2 { margin: 8px 0 0; font-size: 24px; letter-spacing: -.03em; }
+    .settlement-card > span { display: block; margin-top: 7px; color: #8fa39a; font-size: 11px; }
+    .rank-result { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 17px; }
+    .rank-result div { padding: 9px 4px; border: 1px solid #ffffff10; border-radius: 9px; background: #ffffff04; }
+    .rank-result b, .rank-result span { display: block; }
+    .rank-result b { color: #dec77f; font-size: 9px; }
+    .rank-result span { margin-top: 4px; font-size: 10px; }
+    .settlement-card button { width: 100%; min-height: 42px; margin-top: 16px; color: #17150f; border: 0; border-radius: 10px; background: var(--gold); font-weight: 850; }
+
+    .is-portrait .game-shell { grid-template-rows: 58px minmax(0, 1fr); }
+    .is-portrait .game-topbar { grid-template-columns: minmax(70px, 1fr) auto minmax(70px, 1fr); padding: 7px 9px; }
+    .is-portrait .brand-mark, .is-phone.is-landscape .brand-mark { width: 30px; height: 30px; border-radius: 9px; font-size: 12px; }
+    .is-portrait .brand-copy span, .is-phone.is-landscape .brand-copy span { display: none; }
+    .is-portrait .match-status { gap: 6px; padding: 6px 8px; }
+    .is-portrait .round-copy { display: none; }
+    .is-portrait .top-actions .connection-dot, .is-portrait .top-actions .sound { display: none; }
+    .is-portrait .top-actions button { min-height: 31px; padding: 0 8px; }
+    .is-portrait .control-rail { display: none; }
+    .is-portrait .floating-tools, .is-portrait .bottom-dock { display: flex; }
+    .is-portrait .match-score { top: 54px; }
+    .is-portrait .center-play { top: 50%; width: 60%; }
+    .is-portrait .seat { width: 108px; }
+    .is-portrait .seat.partner { top: 4%; }
+    .is-portrait .seat.left { top: 50%; left: 10%; }
+    .is-portrait .seat.right { top: 50%; left: 90%; }
+    .is-portrait .seat.hero { top: 95%; }
+    .is-portrait .hand-rack { bottom: 4px; width: 96%; }
+    .is-portrait .hand-meta { margin-bottom: 2px; }
+    .is-portrait .hand-cards { gap: 2px; padding: 4px; }
+    .is-portrait .hand-row { padding-left: 0; }
+    .is-portrait .playing-card { width: 37px; height: 53px; margin-left: -12px; padding: 4px; border-radius: 5px; }
+    .is-portrait .playing-card b { font-size: 11px; }
+    .is-portrait .playing-card span { margin-top: 1px; font-size: 10px; }
+    .is-portrait .playing-card.selected { transform: translateY(-10px); }
+    .is-portrait .info-drawer { left: 8px; width: auto; }
+    .is-portrait .trick-card { width: 35px; height: 50px; }
+    .is-tablet.is-portrait .hand-rack { width: 92%; }
+    .is-tablet.is-portrait .hand-cards { padding: 7px 9px 5px; }
+    .is-tablet.is-portrait .playing-card { width: 50px; height: 72px; margin-left: -8px; padding: 5px 6px; }
+    .is-tablet.is-portrait .playing-card b { font-size: 14px; }
+    .is-tablet.is-portrait .playing-card span { font-size: 13px; }
+    .is-tablet.is-portrait .guandan-table { top: 40%; width: min(82cqw, 64cqh); }
+    .is-tablet.is-portrait .seat.hero { top: 95%; }
+    .is-phone.is-portrait .match-score { top: 12px; left: 10px; transform: none; }
+    .is-phone.is-portrait .seat.left { top: 28%; left: 14%; }
+    .is-phone.is-portrait .seat.right { top: 72%; left: 86%; }
+
+    .is-phone.is-landscape .game-shell { grid-template-rows: 48px minmax(0, 1fr); }
+    .is-phone.is-landscape .game-topbar { grid-template-columns: minmax(90px, 1fr) auto minmax(90px, 1fr); padding: 5px 8px; }
+    .is-phone.is-landscape .brand-copy strong { font-size: 9px; }
+    .is-phone.is-landscape .top-actions button { min-height: 29px; padding: 0 8px; }
+    .is-phone.is-landscape .hand-rack { bottom: 2px; width: 96%; }
+    .is-phone.is-landscape .hand-meta { display: none; }
+    .is-phone.is-landscape .hand-cards { padding: 4px; }
+    .is-phone.is-landscape .playing-card { width: 36px; height: 54px; margin-left: -11px; padding: 4px; }
+    .is-phone.is-landscape .playing-card b { font-size: 11px; }
+    .is-phone.is-landscape .playing-card span { margin-top: 1px; font-size: 10px; }
+    .is-phone.is-landscape .seat { width: 102px; }
+    .is-phone.is-landscape .seat-card { min-height: 36px; padding: 4px 6px; }
+    .is-phone.is-landscape .avatar { width: 23px; height: 23px; }
+    .is-phone.is-landscape .match-score { top: 6px; left: 10px; transform: none; }
+    .is-phone.is-landscape .center-play { top: 44%; }
+    .is-phone.is-landscape .control-rail { grid-template-rows: auto 1fr auto; margin: 5px 3px 5px 5px; padding: 6px; }
+    .is-phone.is-landscape .turn-card { padding: 7px 5px; }
+    .is-phone.is-landscape .rail-actions button { min-height: 28px; }
+
+    .device-canvas.is-landscape .guandan-table { top: 44%; width: min(82cqw, 128cqh); }
+    .device-canvas.is-landscape .seat.hero { top: 92%; }
+    .is-phone.is-landscape .guandan-table { top: 43%; width: min(82cqw, 126cqh); }
+    .is-phone.is-landscape .seat.hero { top: 86%; }
+    .is-ultrawide .guandan-table { top: 44%; width: min(82cqw, 136cqh); }
+    .is-ultrawide .seat.hero { top: 95%; }
+
+    .design-note { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 15px; }
+    .design-note article { padding: 12px; border: 1px solid #ffffff0e; border-radius: 12px; background: #ffffff03; }
+    .design-note strong { display: block; color: #e2d09d; font-size: 12px; }
+    .design-note p { margin: 6px 0 0; color: #899c93; font-size: 11px; line-height: 1.55; }
+
+    @keyframes deal-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes card-arrive { from { opacity: 0; transform: translateY(-8px) scale(.96); } to { opacity: 1; } }
+    @keyframes drawer-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 940px) {
+      .demo-shell { padding: 14px; }
+      .workspace { grid-template-columns: 1fr; }
+      .control-panel { position: static; grid-template-columns: repeat(2, 1fr); }
+      .control-panel .rule-box { grid-column: 1 / -1; }
+      .preview-stage { min-height: 480px; }
+    }
+
+    @media (max-width: 620px) {
+      .demo-header { align-items: start; flex-direction: column; }
+      .control-panel { grid-template-columns: 1fr; }
+      .control-panel .rule-box { grid-column: auto; }
+      .design-note { grid-template-columns: 1fr; }
+      .preview-stage { height: 68vh; min-height: 430px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="demo-shell">
+    <header class="demo-header">
+      <div>
+        <p class="eyebrow">GUANDAN LAB · RESPONSIVE TABLE STUDY</p>
+        <h1>掼蛋牌桌响应式 Demo</h1>
+      </div>
+      <span class="demo-badge">独立设计原型 · 四人两队</span>
+    </header>
+
+    <div class="workspace">
+      <aside class="control-panel">
+        <section>
+          <h2>设备与尺寸</h2>
+          <div class="option-grid devices" id="device-options"></div>
+        </section>
+        <section>
+          <h2>牌局状态</h2>
+          <div class="option-grid states" id="state-options">
+            <button class="active" data-scene="turn">行动</button>
+            <button data-scene="waiting">等待</button>
+            <button data-scene="settlement">结算</button>
+          </div>
+        </section>
+        <div class="rule-box">
+          <strong>本局打 7</strong>
+          <span>红桃 7 为逢人配；你与北家「青禾」为搭档，当前我方等级领先 1 级。</span>
+        </div>
+        <small>手牌可点击选中；“提示”会选择一组可出的三带二。“规则 / 记录”以非阻塞抽屉呈现。</small>
+      </aside>
+
+      <section class="main-column">
+        <div class="preview-card">
+          <header class="preview-heading">
+            <strong id="preview-title">电脑横屏 · 行动中</strong>
+            <span id="preview-meta">1280 × 720 · 浮动控制坞</span>
+          </header>
+          <div class="preview-stage" id="preview-stage">
+            <div class="device-canvas is-landscape is-wide-desktop" id="device-canvas">
+              <div class="game-shell">
+                <header class="game-topbar">
+                  <div class="brand">
+                    <span class="brand-mark">掼</span>
+                    <span class="brand-copy"><strong>GUANDAN LAB</strong><span>好友房 · 7Q3M2A</span></span>
+                  </div>
+                  <div class="match-status">
+                    <span class="level-badge"><i>♥7</i> 本局打 7</span>
+                    <span class="round-copy">第 6 副 · 我方先到 A 获胜</span>
+                  </div>
+                  <div class="top-actions">
+                    <button class="connection-dot" aria-label="已连接"></button>
+                    <button class="sound">声音</button>
+                    <button>离桌</button>
+                  </div>
+                </header>
+
+                <div class="game-body">
+                  <aside class="control-rail">
+                    <nav class="rail-tools">
+                      <button class="tool-action" data-tool="rules">规则</button>
+                      <button class="tool-action" data-tool="history">记录</button>
+                    </nav>
+                    <div class="turn-card" id="turn-card"></div>
+                    <div class="rail-actions" id="rail-actions"></div>
+                  </aside>
+
+                  <section class="table-zone">
+                    <div class="match-score"><span>我方 9 级</span><b>VS</b><span>对方 8 级</span></div>
+                    <nav class="floating-tools">
+                      <button class="tool-action" data-tool="rules">规则</button>
+                      <button class="tool-action" data-tool="history">记录</button>
+                    </nav>
+
+                    <div class="guandan-table">
+                      <article class="seat partner">
+                        <div class="seat-card"><span class="avatar">队</span><span class="player-copy"><strong class="player-name">青禾</strong><span class="team-name">你的搭档 · 北家</span></span><span class="card-count">14</span></div>
+                        <span class="seat-state">本队</span>
+                      </article>
+                      <article class="seat left">
+                        <div class="seat-card"><span class="avatar">西</span><span class="player-copy"><strong class="player-name">Nova</strong><span class="team-name">对方 · 西家</span></span><span class="card-count">18</span></div>
+                        <span class="seat-state">不要</span>
+                      </article>
+                      <article class="seat right is-current" id="right-seat">
+                        <div class="seat-card"><span class="avatar">东</span><span class="player-copy"><strong class="player-name">Turing</strong><span class="team-name">对方 · 东家</span></span><span class="card-count">12</span></div>
+                        <span class="seat-state" id="right-state">三带二</span>
+                      </article>
+                      <article class="seat hero">
+                        <div class="seat-card"><span class="avatar">你</span><span class="player-copy"><strong class="player-name">你</strong><span class="team-name">本队 · 南家</span></span><span class="card-count" id="hero-count">27</span></div>
+                        <span class="seat-state" id="hero-state">轮到你</span>
+                      </article>
+
+                      <div class="center-play">
+                        <div class="play-label"><span id="play-owner">Turing</span><b id="play-type">三带二</b></div>
+                        <div class="trick-cards" id="trick-cards"></div>
+                        <span class="next-copy" id="next-copy">选择同牌型更大的组合，或使用炸弹</span>
+                      </div>
+                    </div>
+
+                    <div class="hand-rack">
+                      <div class="hand-meta"><span>手牌 <b id="selected-count">27 张 · 未选牌</b></span><span>·</span><span id="selected-type">点击手牌进行选择</span></div>
+                      <div class="hand-cards" id="hand-cards"></div>
+                    </div>
+
+                    <aside class="info-drawer" id="info-drawer">
+                      <header><h3 id="drawer-title">规则速查</h3><button id="drawer-close" aria-label="关闭">×</button></header>
+                      <div class="drawer-content"><ul class="drawer-list" id="drawer-list"></ul></div>
+                    </aside>
+
+                    <section class="settlement" id="settlement">
+                      <div class="settlement-card">
+                        <span class="settlement-mark">升</span>
+                        <p>本副结束 · 第一、第三名</p>
+                        <h2>我方升 2 级</h2>
+                        <span>下一副打 J，红桃 J 为新的逢人配</span>
+                        <div class="rank-result"><div><b>头游</b><span>你</span></div><div><b>二游</b><span>Nova</span></div><div><b>三游</b><span>青禾</span></div><div><b>末游</b><span>Turing</span></div></div>
+                        <button id="next-round">查看下一副</button>
+                      </div>
+                    </section>
+                  </section>
+
+                  <footer class="bottom-dock" id="bottom-dock"></footer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="design-note">
+          <article><strong>四席关系先于装饰</strong><p>搭档统一使用薄荷绿，对手使用金色；固定南北为一队，减少玩家确认关系的成本。</p></article>
+          <article><strong>27 张牌仍可直接操作</strong><p>桌面与横屏使用低重叠单排，完整露出牌点与花色；竖屏自动改为双排。</p></article>
+          <article><strong>关键信息常驻</strong><p>当前级牌、逢人配、双方等级和出牌权留在牌桌内；规则与记录进入覆盖抽屉。</p></article>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const devices = {
+      phonePortrait: { label: "手机竖屏", width: 390, height: 844, type: "phone" },
+      phoneLandscape: { label: "手机横屏", width: 844, height: 390, type: "phone" },
+      tabletPortrait: { label: "平板竖屏", width: 834, height: 1112, type: "tablet" },
+      desktopLandscape: { label: "电脑横屏", width: 1280, height: 720, type: "desktop" },
+      desktopWide: { label: "大屏电脑", width: 1920, height: 1080, type: "desktop" },
+    };
+
+    const hand = [
+      ["大王", "★", "joker red"], ["小王", "★", "joker"],
+      ["A", "♠", ""], ["A", "♥", "red"], ["K", "♣", ""], ["K", "♦", "red"],
+      ["Q", "♥", "red"], ["J", "♠", ""], ["10", "♣", ""],
+      ["9", "♠", ""], ["9", "♥", "red"], ["9", "♦", "red"], ["8", "♣", ""],
+      ["7", "♥", "red wild"], ["7", "♠", ""], ["6", "♦", "red"], ["6", "♣", ""],
+      ["5", "♠", ""], ["5", "♥", "red"], ["4", "♣", ""], ["4", "♦", "red"],
+      ["3", "♠", ""], ["3", "♥", "red"], ["2", "♣", ""], ["2", "♦", "red"],
+      ["2", "♥", "red"], ["2", "♠", ""],
+    ];
+
+    const ruleItems = [
+      ["级牌", "本局打 7，所有 7 高于 A、低于小王。红桃 7 是逢人配。"],
+      ["普通牌型", "单张、对子、三张、三带二、五张顺子、三连对、钢板。"],
+      ["炸弹顺序", "四王最大；六张及以上炸弹大于同花顺，同花顺大于五炸与四炸。"],
+      ["接风", "一名玩家出完后，其最后一手无人压过，下一轮由搭档领出。"],
+      ["升级", "搭档为二游升 3 级，三游升 2 级，末游升 1 级。"],
+    ];
+
+    const historyItems = [
+      ["18", "Turing 出 99944 · 三带二"],
+      ["17", "Nova 不要"],
+      ["16", "青禾 不要"],
+      ["15", "你出 667788 · 三连对"],
+      ["14", "Turing 出 778899 · 三连对"],
+    ];
+
+    const initialTrick = [["9", "♠"], ["9", "♥"], ["9", "♦"], ["4", "♣"], ["4", "♦"]];
+    const state = { device: "desktopLandscape", scene: "turn", drawer: null, selected: new Set(), played: new Set(), trick: initialTrick, owner: "Turing", playType: "三带二" };
+    const canvas = document.querySelector("#device-canvas");
+    const stage = document.querySelector("#preview-stage");
+
+    function isRedSuit(suit) { return suit === "♥" || suit === "♦"; }
+
+    function makeDeviceOptions() {
+      const host = document.querySelector("#device-options");
+      host.innerHTML = Object.entries(devices).map(([key, item]) => `<button class="device-option${key === state.device ? " active" : ""}" data-device="${key}"><span>${item.label}</span><i>${item.width}×${item.height}</i></button>`).join("");
+      host.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+        state.device = button.dataset.device;
+        state.drawer = null;
+        render();
+      }));
+    }
+
+    function renderTrick() {
+      document.querySelector("#play-owner").textContent = state.owner;
+      document.querySelector("#play-type").textContent = state.playType;
+      document.querySelector("#trick-cards").innerHTML = state.trick.map(([rank, suit]) => `<i class="trick-card${isRedSuit(suit) ? " red" : ""}"><b>${rank}</b><span>${suit}</span></i>`).join("");
+    }
+
+    function cardMarkup(card, index) {
+      const [rank, suit, classes] = card;
+      const selected = state.selected.has(index);
+      const delay = Math.min(index * 9, 160);
+      return `<button class="playing-card ${classes}${selected ? " selected" : ""}" style="z-index:${index + 1};animation-delay:${delay}ms" data-card="${index}" aria-pressed="${selected}"><b>${rank}</b><span>${suit}</span>${classes.includes("wild") ? "<small>配</small>" : ""}</button>`;
+    }
+
+    function renderHand(isPortrait) {
+      const host = document.querySelector("#hand-cards");
+      const available = hand.map((card, index) => ({ card, index })).filter(({ index }) => !state.played.has(index));
+      const split = Math.ceil(available.length / 2);
+      const rows = isPortrait ? [available.slice(0, split), available.slice(split)] : [available];
+      host.innerHTML = rows.map((row) => {
+        const markup = row.map(({ card, index }) => cardMarkup(card, index)).join("");
+        return `<div class="hand-row">${markup}</div>`;
+      }).join("");
+      document.querySelector("#hero-count").textContent = String(available.length);
+      host.querySelectorAll("[data-card]").forEach((button) => button.addEventListener("click", () => {
+        if (state.scene !== "turn") return;
+        const index = Number(button.dataset.card);
+        if (state.selected.has(index)) state.selected.delete(index); else state.selected.add(index);
+        button.classList.toggle("selected", state.selected.has(index));
+        button.setAttribute("aria-pressed", String(state.selected.has(index)));
+        renderSelection();
+        renderActions();
+      }));
+    }
+
+    function syncHandSelection() {
+      document.querySelectorAll("[data-card]").forEach((button) => {
+        const selected = state.selected.has(Number(button.dataset.card));
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+    }
+
+    function renderSelection() {
+      const count = state.selected.size;
+      const remaining = hand.length - state.played.size;
+      document.querySelector("#selected-count").textContent = count ? `已选 ${count} 张` : `${remaining} 张 · 未选牌`;
+      document.querySelector("#selected-type").textContent = count === 5 ? "候选：三带二 · 99944" : count ? "继续选择，或取消已选牌" : "点击手牌进行选择";
+    }
+
+    function actionButtons() {
+      if (state.scene === "waiting") return `<button class="quiet" data-action="rules">规则</button><button disabled>等待出牌</button>`;
+      if (state.scene === "settlement") return `<button class="primary" data-action="continue">查看结算</button>`;
+      return `<button class="quiet" data-action="pass">不要</button><button data-action="hint">提示</button><button class="primary" data-action="play" ${state.selected.size ? "" : "disabled"}>出牌</button>`;
+    }
+
+    function renderActions() {
+      document.querySelector("#rail-actions").innerHTML = actionButtons();
+      const bottom = document.querySelector("#bottom-dock");
+      bottom.innerHTML = state.scene === "waiting" ? `<div class="bottom-waiting">等待青禾（你的搭档）行动</div>` : state.scene === "settlement" ? `<button class="primary" data-action="continue">查看本副结算</button>` : actionButtons();
+      document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => handleAction(button.dataset.action)));
+    }
+
+    function handleAction(action) {
+      if (action === "rules") { state.drawer = "rules"; renderDrawer(); return; }
+      if (action === "continue") { setScene("settlement"); return; }
+      if (action === "hint") {
+        state.selected = new Set([9, 10, 11, 19, 20]);
+        renderSelection();
+        syncHandSelection();
+        renderActions();
+        return;
+      }
+      if (action === "pass") {
+        state.selected.clear();
+        state.scene = "waiting";
+        state.owner = "Turing";
+        document.querySelector("#next-copy").textContent = "你选择不要，等待搭档青禾行动";
+        render();
+        return;
+      }
+      if (action === "play" && state.selected.size) {
+        const playedNow = [...state.selected].sort((a, b) => a - b);
+        state.trick = playedNow.map((index) => [hand[index][0], hand[index][1]]);
+        state.owner = "你";
+        state.playType = state.selected.size === 5 ? "三带二" : `${state.selected.size} 张组合`;
+        playedNow.forEach((index) => state.played.add(index));
+        state.selected.clear();
+        state.scene = "waiting";
+        document.querySelector("#next-copy").textContent = "出牌成功，等待青禾行动";
+        render();
+      }
+    }
+
+    function renderTurnState() {
+      const isTurn = state.scene === "turn";
+      document.querySelector("#turn-card").innerHTML = state.scene === "settlement"
+        ? `<i></i><strong>本副结束</strong><small>我方升 2 级</small>`
+        : isTurn ? `<i></i><strong>轮到你</strong><small>剩余 18 秒</small>` : `<i></i><strong>等待青禾</strong><small>搭档正在行动</small>`;
+      document.querySelector("#hero-state").textContent = isTurn ? "轮到你" : state.scene === "settlement" ? "头游" : "不要";
+      document.querySelector("#right-seat").classList.toggle("is-current", !isTurn && state.scene !== "settlement");
+      document.querySelector("#right-state").textContent = state.scene === "settlement" ? "末游" : "三带二";
+      document.querySelector("#settlement").classList.toggle("open", state.scene === "settlement");
+    }
+
+    function renderDrawer() {
+      const drawer = document.querySelector("#info-drawer");
+      document.querySelectorAll(".tool-action").forEach((button) => button.classList.toggle("active", button.dataset.tool === state.drawer));
+      if (!state.drawer) { drawer.classList.remove("open"); return; }
+      const items = state.drawer === "rules" ? ruleItems : historyItems;
+      document.querySelector("#drawer-title").textContent = state.drawer === "rules" ? "规则速查" : "本副记录";
+      document.querySelector("#drawer-list").innerHTML = items.map(([title, copy], index) => `<li><b>${state.drawer === "rules" ? index + 1 : title}</b><div><strong>${state.drawer === "rules" ? title : copy}</strong>${state.drawer === "rules" ? `<span>${copy}</span>` : `<span>公开动作记录</span>`}</div></li>`).join("");
+      drawer.classList.add("open");
+    }
+
+    function setScene(scene) {
+      state.scene = scene;
+      state.selected.clear();
+      if (scene === "turn") {
+        state.played.clear();
+        state.trick = initialTrick;
+        state.owner = "Turing";
+        state.playType = "三带二";
+        document.querySelector("#next-copy").textContent = "选择同牌型更大的组合，或使用炸弹";
+      }
+      if (scene === "waiting") document.querySelector("#next-copy").textContent = "等待搭档青禾行动";
+      render();
+    }
+
+    function fitPreview() {
+      const device = devices[state.device];
+      const scale = Math.min((stage.clientWidth - 34) / device.width, (stage.clientHeight - 34) / device.height, 1);
+      canvas.style.setProperty("--preview-scale", scale.toFixed(4));
+    }
+
+    function render() {
+      const device = devices[state.device];
+      const ratio = device.width / device.height;
+      const isLandscape = ratio >= 1.35;
+      const isWideDesktop = device.type === "desktop" && isLandscape && device.width >= 1024;
+      const isUltraWide = device.type === "desktop" && device.width >= 1600;
+      canvas.style.setProperty("--device-width", `${device.width}px`);
+      canvas.style.setProperty("--device-height", `${device.height}px`);
+      canvas.className = `device-canvas ${isLandscape ? "is-landscape" : "is-portrait"} ${device.type === "phone" ? "is-phone" : device.type === "tablet" ? "is-tablet" : "is-desktop"}${isWideDesktop ? " is-wide-desktop" : ""}${isUltraWide ? " is-ultrawide" : ""}`;
+      const sceneLabel = state.scene === "turn" ? "行动中" : state.scene === "waiting" ? "等待中" : "本副结算";
+      const layoutLabel = isWideDesktop ? "浮动控制坞" : isLandscape ? "左侧操作栏" : "底部操作栏";
+      document.querySelector("#preview-title").textContent = `${device.label} · ${sceneLabel}`;
+      document.querySelector("#preview-meta").textContent = `${device.width} × ${device.height} · ${layoutLabel}`;
+      document.querySelectorAll("[data-scene]").forEach((button) => button.classList.toggle("active", button.dataset.scene === state.scene));
+      makeDeviceOptions();
+      renderTrick();
+      renderSelection();
+      renderHand(!isLandscape);
+      renderActions();
+      renderTurnState();
+      renderDrawer();
+      requestAnimationFrame(fitPreview);
+    }
+
+    document.querySelectorAll("[data-scene]").forEach((button) => button.addEventListener("click", () => setScene(button.dataset.scene)));
+    document.addEventListener("click", (event) => {
+      const tool = event.target.closest(".tool-action");
+      if (tool) { state.drawer = state.drawer === tool.dataset.tool ? null : tool.dataset.tool; renderDrawer(); }
+    });
+    document.querySelector("#drawer-close").addEventListener("click", () => { state.drawer = null; renderDrawer(); });
+    document.querySelector("#next-round").addEventListener("click", () => setScene("turn"));
+    new ResizeObserver(fitPreview).observe(stage);
+    render();
+  </script>
+</body>
+</html>

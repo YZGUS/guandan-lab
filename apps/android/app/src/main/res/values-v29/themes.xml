@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Guandan" parent="Theme.Guandan.Base">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>
