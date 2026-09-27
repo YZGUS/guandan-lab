@@ -66,10 +66,23 @@ class MainActivity : Activity() {
         WebView.setWebContentsDebuggingEnabled(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
         window.statusBarColor = ink
         window.navigationBarColor = ink
-        root = FrameLayout(this).apply { setBackgroundColor(ink) }
+        root = FrameLayout(this).apply {
+            setBackgroundColor(ink)
+            setOnApplyWindowInsetsListener { view, insets ->
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val safeArea = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                    view.setPadding(safeArea.left, safeArea.top, safeArea.right, safeArea.bottom)
+                } else {
+                    @Suppress("DEPRECATION")
+                    view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+                }
+                insets
+            }
+        }
         discoveryView = buildDiscoveryView()
         root.addView(discoveryView, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        root.requestApplyInsets()
         if (Build.VERSION.SDK_INT >= 33) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
         }
@@ -223,28 +236,6 @@ class MainActivity : Activity() {
         webView = browser
         root.removeAllViews()
         root.addView(browser, FrameLayout.LayoutParams(-1, -1))
-        browser.setOnApplyWindowInsetsListener { view, insets ->
-            val top: Int
-            val bottom: Int
-            if (Build.VERSION.SDK_INT >= 30) {
-                val bars = insets.getInsets(WindowInsets.Type.systemBars())
-                top = bars.top
-                bottom = bars.bottom
-            } else {
-                @Suppress("DEPRECATION")
-                top = insets.systemWindowInsetTop
-                @Suppress("DEPRECATION")
-                bottom = insets.systemWindowInsetBottom
-            }
-            val params = view.layoutParams as FrameLayout.LayoutParams
-            if (params.topMargin != top || params.bottomMargin != bottom) {
-                params.topMargin = top
-                params.bottomMargin = bottom
-                view.layoutParams = params
-            }
-            insets
-        }
-        browser.requestApplyInsets()
     }
 
     @Deprecated("Deprecated in Java")
