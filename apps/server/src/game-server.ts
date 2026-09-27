@@ -15,6 +15,7 @@ export class GameServer {
   private readonly pending = new Map<WebSocket, ReturnType<typeof setTimeout>>();
   private readonly roomTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly cleanupTimer: ReturnType<typeof setInterval>;
+  private readonly heartbeatTimer: ReturnType<typeof setInterval>;
 
   constructor(
     private readonly socketServer: WebSocketServer,
@@ -24,6 +25,12 @@ export class GameServer {
     socketServer.on('connection', (client, request) => this.accept(client, request));
     this.cleanupTimer = setInterval(() => this.cleanup(), 60_000);
     this.cleanupTimer.unref();
+    this.heartbeatTimer = setInterval(() => {
+      for (const client of this.connections.keys()) {
+        if (client.readyState === WebSocket.OPEN) client.ping();
+      }
+    }, 30_000);
+    this.heartbeatTimer.unref();
   }
 
   start() {
@@ -32,6 +39,7 @@ export class GameServer {
 
   stop() {
     clearInterval(this.cleanupTimer);
+    clearInterval(this.heartbeatTimer);
     this.pending.forEach(clearTimeout);
     this.roomTimers.forEach(clearTimeout);
     this.pending.clear();
